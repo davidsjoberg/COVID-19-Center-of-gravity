@@ -56,7 +56,8 @@ centers <- map_dfr(unique(d$date), function(.x) {
 # Choose lat_0 with -90 <= lat_0 <= 90 and lon_0 with -180 <= lon_0 <= 180
 
 create_map <- function(.x) {
-  print(paste(format(.x/nrow(frames)*100, digits = 1), "%"))
+  print(paste("Total frames", length(frames)))
+  print(paste("This frame no:", .x))
   lat <- smooth_df %>% filter(row == .x) %>% pull(center_lat)
   lon <- smooth_df %>% filter(row == .x) %>% pull(center_lng)
   .date <- smooth_df %>% filter(row == .x) %>% pull(date) %>% first()
@@ -203,12 +204,13 @@ create_map <- function(.x) {
 
 
 # Smooth frames ----------------------------------------------------------------
+.n_frames_smooth <- 8
 smooth_df <- bind_rows(centers %>% slice(1, 1, 1),
                        map_dfr(2:nrow(centers), function(.r) {
                          .df <- centers %>%
                            slice((.r-1):.r)
-                         tibble(center_lng = .df$center_lng[2] - (.df$center_lng[2] - .df$center_lng[1]) * c(3/4, 2/4, 1/4, 0),
-                                center_lat = .df$center_lat[2] - (.df$center_lat[2] - .df$center_lat[1]) * c(3/4, 2/4, 1/4, 0),
+                         tibble(center_lng = .df$center_lng[2] - (.df$center_lng[2] - .df$center_lng[1]) * seq(0, 1, length.out = .n_frames_smooth) %>% rev() %>% .[-1],
+                                center_lat = .df$center_lat[2] - (.df$center_lat[2] - .df$center_lat[1]) * seq(0, 1, length.out = .n_frames_smooth) %>% rev() %>% .[-1],
                                 date = .df$date[2])})) %>%
   mutate(row = row_number()) %>%
   as_tibble()
@@ -218,8 +220,8 @@ ddd <- map_dfr(d %>% split(d$country), function(.d) {
             map_dfr(2:nrow(.d), function(.r) {
               .df <- .d %>%
                 slice((.r-1):.r)
-              tibble(deaths = .df$deaths[2] - (.df$deaths[2] - .df$deaths[1]) * c(3/4, 2/4, 1/4, 0),
-                     deaths_r7d = .df$deaths_r7d[2] - (.df$deaths_r7d[2] - .df$deaths_r7d[1]) * c(3/4, 2/4, 1/4, 0),
+              tibble(deaths = .df$deaths[2] - (.df$deaths[2] - .df$deaths[1]) * seq(0, 1, length.out = .n_frames_smooth) %>% rev() %>% .[-1],
+                     deaths_r7d = .df$deaths_r7d[2] - (.df$deaths_r7d[2] - .df$deaths_r7d[1]) * seq(0, 1, length.out = .n_frames_smooth) %>% rev() %>% .[-1],
                      date = .df$date[2],
                      country = .df$country[1])})) %>%
     mutate(row = row_number()) %>%
@@ -240,4 +242,4 @@ ddd <- map_dfr(d %>% split(d$country), function(.d) {
 frames <- c(1:nrow(smooth_df), rep(nrow(smooth_df), as.integer(nrow(smooth_df)/4)))
 animation::saveVideo({
   walk(frames, ~create_map(.x) %>% print())
-}, movie.name = "mygif2.mp4", interval = 0.03, ani.width = 2000, ani.height = 2000)
+}, movie.name = "mygif2.mp4", interval = 0.04, ani.width = 2000, ani.height = 2000)
