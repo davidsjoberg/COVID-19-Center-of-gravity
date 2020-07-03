@@ -9,7 +9,8 @@ options(scipen = 9999)
 # World map --------------------------------------------------------------------
 # Read the data
 # mini_world <- read_sf('data/ne_110m_land/ne_110m_land.shp')
-mini_world <- ne_countries(scale = 50, returnclass = "sf")
+mini_world <- ne_countries(scale = 50, returnclass = "sf") %>%
+  mutate(name = countrycode::countryname(name))
 
 
 # COVID data -------------------------------------------------------------------
@@ -27,10 +28,7 @@ d <- covid19.analytics::covid19.data("ts-deaths") %>%
   ungroup() %>%
   arrange(country, date) %>%
   drop_na(deaths_r7d) %>%
-  mutate(country = case_when(
-    country == "US"  ~ "United States of America",
-    T ~ country
-  ))
+  mutate(country = countrycode::countryname(country))
 
 centers <- map_dfr(unique(d$date), function(.x) {
   sf <- mini_world %>%
@@ -228,6 +226,8 @@ ddd <- map_dfr(d %>% split(d$country), function(.d) {
     as_tibble()
 })
 
+frames <- c(1:nrow(smooth_df), rep(nrow(smooth_df), as.integer(nrow(smooth_df)/4)))
+
 # ** Test plot -----------------------------------------------------------------
 # create_map(100)
 # create_map(310)
@@ -239,7 +239,6 @@ ddd <- map_dfr(d %>% split(d$country), function(.d) {
 
 # VIDEO ------------------------------------------------------------------------
 # Be aware that it takes some time to render all plots. Maybe an hour.
-frames <- c(1:nrow(smooth_df), rep(nrow(smooth_df), as.integer(nrow(smooth_df)/4)))
 animation::saveVideo({
   walk(frames, ~create_map(.x) %>% print())
 }, movie.name = "mygif2.mp4", interval = 0.04, ani.width = 2000, ani.height = 2000)
